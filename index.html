@@ -18,20 +18,26 @@
 
     h1 { margin-bottom: 10px; }
 
-    #container { position: relative; }
+    /* Mirror the whole container so coordinates stay correct */
+    #container {
+      position: relative;
+      transform: scaleX(-1);
+    }
 
     video {
       border-radius: 12px;
       border: 2px solid #38bdf8;
       background: black;
-      transform: scaleX(-1);
+      display: block;
     }
 
+    /* Canvas stays normal so text is readable */
     canvas {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
+      transform: scaleX(-1);
     }
 
     .note {
@@ -42,7 +48,7 @@
   </style>
 </head>
 <body>
-  <h1>Real‑Time Emotion Detection</h1>
+  <h1>Real-Time Emotion Detection</h1>
 
   <div id="container">
     <video id="video" width="480" height="360" autoplay muted playsinline></video>
@@ -90,7 +96,13 @@
     async function startDetection(displaySize) {
       setInterval(async () => {
         const detections = await faceapi
-          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .detectAllFaces(
+            video,
+            new faceapi.TinyFaceDetectorOptions({
+              inputSize: 416,
+              scoreThreshold: 0.3
+            })
+          )
           .withFaceExpressions();
 
         const resized = faceapi.resizeResults(detections, displaySize);
