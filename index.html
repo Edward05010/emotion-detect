@@ -18,25 +18,24 @@
 
     h1 { margin-bottom: 10px; }
 
-    /* Mirror the whole container (video + overlay coordinates) */
-    #container {
-      position: relative;
-      transform: scaleX(-1);
-    }
+    #container { position: relative; }
 
+    /* Mirror video like a selfie */
     video {
       border-radius: 12px;
       border: 2px solid #38bdf8;
       background: black;
       display: block;
+      transform: scaleX(-1);
     }
 
-    /* Canvas itself is NOT mirrored */
+    /* Mirror canvas so boxes align with video */
     canvas {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
+      transform: scaleX(-1);
     }
 
     .note {
@@ -97,35 +96,31 @@
         const detections = await faceapi
           .detectAllFaces(
             video,
-            new faceapi.TinyFaceDetectorOptions({
-              inputSize: 416,
-              scoreThreshold: 0.3
-            })
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 })
           )
           .withFaceExpressions();
 
         const resized = faceapi.resizeResults(detections, displaySize);
         const ctx = canvas.getContext('2d');
-
-        // reset transform
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // flip drawing back so text is readable
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
 
         resized.forEach(det => {
           const box = det.detection.box;
           const [emotion, confidence] = getTopEmotion(det.expressions);
 
+          // draw box (canvas already mirrored)
           ctx.strokeStyle = '#38bdf8';
           ctx.lineWidth = 2;
           ctx.strokeRect(box.x, box.y, box.width, box.height);
 
+          // draw text NOT mirrored
+          ctx.save();
+          ctx.scale(-1, 1);
+          const textX = -(box.x + box.width);
           ctx.fillStyle = '#38bdf8';
           ctx.font = '16px Arial';
-          ctx.fillText(`${emotion} (${Math.round(confidence * 100)}%)`, box.x, box.y - 8);
+          ctx.fillText(`${emotion} (${Math.round(confidence * 100)}%)`, textX, box.y - 8);
+          ctx.restore();
         });
       }, 150);
     }
