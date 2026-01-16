@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Emotion Detection Demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 { margin-bottom: 10px; }
+
+    #container { position: relative; }
+
+    video {
+      border-radius: 12px;
+      border: 2px solid #38bdf8;
+      background: black;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .note {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-Time Emotion Detection</h1>
+
+  <div id="container">
+    <video id="video" width="480" height="360" autoplay muted playsinline></video>
+  </div>
+
+  <div class="note">Allow camera access. Works best in Chrome.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    let canvas;
+
+    async function startCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+
+      return new Promise(resolve => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve();
+        };
+      });
+    }
+
+    async function loadModels() {
+      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+    }
+
+    function getTopEmotion(expressions) {
+      return Object.entries(expressions).sort((a, b) => b[1] - a[1])[0];
+    }
+
+    function setupCanvas() {
+      canvas = faceapi.createCanvasFromMedia(video);
+      document.getElementById('container').append(canvas);
+
+      const size = { width: video.width, height: video.height };
+      faceapi.matchDimensions(canvas, size);
+      return size;
+    }
+
+    async function startDetection(displaySize) {
+      setInterval(async () => {
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceExpressions();
+
+        const resized = faceapi.resizeResults(detections, displaySize);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        resized.forEach(det => {
+          const box = det.detection.box;
+          const [emotion, confidence] = getTopEmotion(det.expressions);
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '16px Arial';
+          ctx.fillText(`${emotion} (${Math.round(confidence * 100)}%)`, box.x, box.y - 8);
+        });
+      }, 150);
+    }
+
+    async function init() {
+      try {
+        await startCamera();
+        await loadModels();
+        const size = setupCanvas();
+        startDetection(size);
+      } catch (err) {
+        alert('Error: ' + err.message);
+        console.error(err);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
