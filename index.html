@@ -18,7 +18,7 @@
 
     h1 { margin-bottom: 10px; }
 
-    /* Mirror the whole container so coordinates stay correct */
+    /* Mirror the whole container (video + overlay coordinates) */
     #container {
       position: relative;
       transform: scaleX(-1);
@@ -31,7 +31,7 @@
       display: block;
     }
 
-    /* Canvas stays normal so text is readable */
+    /* Canvas itself is NOT mirrored */
     canvas {
       position: absolute;
       top: 0;
@@ -106,7 +106,14 @@
 
         const resized = faceapi.resizeResults(detections, displaySize);
         const ctx = canvas.getContext('2d');
+
+        // reset transform
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // flip drawing back so text is readable
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
 
         resized.forEach(det => {
           const box = det.detection.box;
